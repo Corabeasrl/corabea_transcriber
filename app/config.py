@@ -4,14 +4,6 @@ from urllib.parse import quote_plus, urlparse
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-DEFAULT_INITIAL_PROMPT = (
-    "Trascrizione di una televisita medica in italiano tra operatore sanitario "
-    "e paziente. Terminologia clinica: sintomi, diagnosi, terapia, farmaci, "
-    "posologia, mg, anamnesi, pressione arteriosa, glicemia, referto, "
-    "prescrizione, visita di controllo."
-)
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -30,7 +22,7 @@ class Settings(BaseSettings):
     whisper_beam_size: int = 5
     whisper_vad_filter: bool = True
     whisper_word_timestamps: bool = False
-    whisper_initial_prompt: str = DEFAULT_INITIAL_PROMPT
+    whisper_initial_prompt: str = ""
     whisper_condition_on_previous_text: bool = False
     whisper_preload: bool = True
 
@@ -56,9 +48,9 @@ class Settings(BaseSettings):
     celery_max_retries: int = 20
 
     def _redis_url_with_auth(self) -> str:
-        """Mirror corabea_api: inject the url-encoded password into REDIS_URL."""
         if not self.redis_password:
             return self.redis_url
+        
         p = urlparse(self.redis_url)
         host = p.hostname or "localhost"
         port = p.port or 6379

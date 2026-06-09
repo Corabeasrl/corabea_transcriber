@@ -70,7 +70,7 @@ class Transcriber:
         )
         initial_prompt = (
             initial_prompt if initial_prompt is not None else s.whisper_initial_prompt
-        )
+        ) or None
 
         with self._lock:
             segments_iter, info = self._model.transcribe(
