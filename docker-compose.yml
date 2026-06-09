@@ -1,0 +1,15 @@
+services:
+  whisper-celery:
+    build: .
+    image: corabea-transcriber:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - whisper-models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+
+volumes:
+  whisper-models:
