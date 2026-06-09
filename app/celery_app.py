@@ -1,6 +1,7 @@
 import logging
 
 from celery import Celery
+from celery.signals import worker_process_init
 
 from .config import get_settings
 from .pipeline import Pipeline, Status
@@ -27,7 +28,6 @@ celery_app.conf.update(
     },
     task_ignore_result=True,
     result_backend=None,
-    # Parallel transcriptions per container; CLI --concurrency would override this.
     worker_concurrency=settings.celery_concurrency,
     worker_prefetch_multiplier=1,
     task_acks_late=True,
@@ -43,6 +43,13 @@ def _get_pipeline() -> Pipeline:
     if _pipeline is None:
         _pipeline = Pipeline(settings, S3Store(settings), Transcriber(settings))
     return _pipeline
+
+
+@worker_process_init.connect
+def _preload(**_kwargs):
+    if settings.whisper_preload:
+        logger.info("preloading whisper model at worker startup…")
+        _get_pipeline()
 
 
 @celery_app.task(

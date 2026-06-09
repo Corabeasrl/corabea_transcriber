@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     whisper_word_timestamps: bool = False
     whisper_initial_prompt: str = DEFAULT_INITIAL_PROMPT
     whisper_condition_on_previous_text: bool = False
+    whisper_preload: bool = True
 
     s3_endpoint_url: str = "http://minio:9000"
     s3_access_key_id: str = ""
@@ -47,8 +48,6 @@ class Settings(BaseSettings):
     redis_use_ssl: bool = False
     celery_broker_url: str | None = None
     celery_queue_prefix: str = ""
-    # Parallel transcriptions per worker container (prefork processes).
-    # Keep celery_concurrency * OMP_NUM_THREADS <= CPU cores.
     celery_concurrency: int = 1
 
     min_object_age_seconds: int = 120

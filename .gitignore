@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local config & secrets
+.env
+secrets/
+
+# Models & audio artifacts
+models/
+*.wav
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
