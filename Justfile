@@ -1,8 +1,14 @@
 build:
     docker build -t corabea-transcriber:latest .
 
+build-gpu:
+    docker build -f Dockerfile.gpu -t corabea-transcriber:gpu .
+
 deploy: (build)
     cd /opt/transcriber && docker compose up -d
+
+deploy-gpu: (build-gpu)
+    cd /opt/transcriber && docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 
 pull-model model="":
     cd /opt/transcriber && docker compose run --rm \

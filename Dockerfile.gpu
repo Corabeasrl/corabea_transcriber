@@ -1,0 +1,27 @@
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3 /usr/local/bin/python \
+    && pip3 install --no-cache-dir uv==0.5.18
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    WHISPER_DOWNLOAD_ROOT=/models \
+    UV_SYSTEM_PYTHON=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_NO_CACHE=1 \
+    WHISPER_DEVICE=cuda \
+    WHISPER_COMPUTE_TYPE=float16
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN uv pip install --system -r requirements.txt
+
+COPY app ./app
+
+VOLUME ["/models"]
+
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel", "info"]
