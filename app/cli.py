@@ -25,6 +25,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Transcriber CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list roomhash folders that have recordings")
+    sub.add_parser("scan", help="show rooms with recordings but no transcript (dry run)")
     run = sub.add_parser("run", help="transcribe one room and exit")
     run.add_argument("roomhash")
     run.add_argument("--force", action="store_true",
@@ -41,6 +42,14 @@ def main() -> None:
         if not rooms:
             print(f"(no recordings under {settings.recordings_prefix}/)")
         for r in rooms:
+            print(r)
+        return
+
+    if args.cmd == "scan":
+        store = S3Store(settings)
+        todo = store.rooms_to_transcribe()
+        print(f"{len(todo)} room(s) to transcribe (recordings without a transcript):")
+        for r in todo:
             print(r)
         return
 
