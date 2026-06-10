@@ -23,6 +23,15 @@ RUN uv pip install --system -r requirements.txt
 
 COPY app ./app
 
-VOLUME ["/models"]
+RUN useradd -m -u 1000 appuser
+
+ARG WHISPER_MODEL=large-v3
+ENV WHISPER_MODEL=${WHISPER_MODEL}
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8', download_root='/models')" \
+    && chown -R appuser:appuser /models
+
+ENV HF_HUB_OFFLINE=1
+
+USER appuser
 
 CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel", "info"]

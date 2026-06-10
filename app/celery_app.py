@@ -28,6 +28,7 @@ celery_app.conf.update(
     },
     task_ignore_result=True,
     result_backend=None,
+    broker_connection_retry_on_startup=True,
     worker_concurrency=settings.celery_concurrency,
     worker_prefetch_multiplier=1,
     task_acks_late=True,

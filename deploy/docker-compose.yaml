@@ -25,11 +25,5 @@ services:
     networks:
       - corabea_internal
 
-    volumes:
-      - whisper_models:/models
-
     healthcheck:
       disable: true
-
-volumes:
-  whisper_models:
