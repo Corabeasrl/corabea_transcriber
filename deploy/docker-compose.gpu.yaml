@@ -5,3 +5,6 @@ services:
     environment:
       WHISPER_DEVICE: cuda
       WHISPER_COMPUTE_TYPE: float16
+
+  ollama:
+    gpus: all

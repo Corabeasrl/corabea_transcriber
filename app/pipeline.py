@@ -7,6 +7,7 @@ from pathlib import Path
 from .audio import AudioError, concat_to_wav, make_workdir
 from .config import Settings
 from .s3 import S3Store
+from .summarizer import Summarizer
 from .transcriber import Transcriber
 
 logger = logging.getLogger("pipeline")
@@ -15,6 +16,7 @@ logger = logging.getLogger("pipeline")
 class Status(str, Enum):
     DONE = "done"
     SKIPPED = "skipped"
+    SUMMARIZED = "summarized"
     NO_AUDIO = "no_audio"
     DEFERRED = "deferred"
 
@@ -36,10 +38,21 @@ class PipelineResult:
 class Pipeline:
     """Transcribe one room's recordings and write the result to S3."""
 
-    def __init__(self, settings: Settings, store: S3Store, transcriber: Transcriber):
+    def __init__(self, settings: Settings, store: S3Store, transcriber: Transcriber,
+                 summarizer: Summarizer | None = None):
         self._s = settings
         self._store = store
         self._transcriber = transcriber
+        self._summarizer = summarizer or Summarizer(settings)
+    
+    def _summarize(self, roomhash: str, manifest: str, text: str) -> None:
+        try:
+            summary = self._summarizer.summarize(text)
+            key = self._store.transcript_key(roomhash, manifest, "summary.txt")
+            self._store.put_text(key, summary, "text/plain; charset=utf-8")
+            logger.info("[%s] summary -> %s", roomhash, key)
+        except Exception as e:
+            logger.warning("[%s] summary skipped (best-effort): %s", roomhash, e)
 
     def process_room(self, roomhash: str, force: bool = False) -> PipelineResult:
         objs = self._store.list_recordings(roomhash)
@@ -50,6 +63,11 @@ class Pipeline:
         manifest = self._store.manifest_hash(objs)
 
         if not force and self._store.transcript_exists(roomhash, manifest):
+            if self._summarizer.enabled and not self._store.summary_exists(roomhash, manifest):
+                text = self._store.get_text(self._store.transcript_key(roomhash, manifest, "txt"))
+                self._summarize(roomhash, manifest, text)
+                return PipelineResult(Status.SUMMARIZED, roomhash, manifest,
+                                      num_fragments=len(objs))
             logger.info("[%s] transcript %s already exists, skipping", roomhash, manifest)
             return PipelineResult(Status.SKIPPED, roomhash, manifest,
                                   num_fragments=len(objs))
@@ -100,6 +118,9 @@ class Pipeline:
         self._store.put_text(json_key, json.dumps(payload, ensure_ascii=False, indent=2),
                              "application/json")
         self._store.put_text(txt_key, result.text, "text/plain; charset=utf-8")
+        logger.info("[%s] transcript done -> %s", roomhash, json_key)
 
-        logger.info("[%s] done -> %s", roomhash, json_key)
+        if self._summarizer.enabled:
+            self._summarize(roomhash, manifest, result.text)
+
         return PipelineResult(Status.DONE, roomhash, manifest, json_key, len(objs))

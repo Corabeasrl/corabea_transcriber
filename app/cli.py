@@ -5,14 +5,15 @@ Production runs as a Celery worker (see app/celery_app.py).
 
     python -m app.cli list             # list roomhash folders with recordings
     python -m app.cli run <roomhash>   # transcribe one room and write to S3
+    python -m app.cli summarize <file> # summarize a local text file (LLM only)
 """
 import argparse
 import logging
+from pathlib import Path
 
 from .config import get_settings
-from .pipeline import Pipeline
 from .s3 import S3Store
-from .transcriber import Transcriber
+from .summarizer import Summarizer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,6 +29,8 @@ def main() -> None:
     run.add_argument("roomhash")
     run.add_argument("--force", action="store_true",
                      help="re-transcribe even if a transcript already exists")
+    summ = sub.add_parser("summarize", help="summarize a local text file (LLM only, no Whisper/S3)")
+    summ.add_argument("file")
 
     args = parser.parse_args()
     settings = get_settings()
@@ -41,6 +44,13 @@ def main() -> None:
             print(r)
         return
 
+    if args.cmd == "summarize":
+        text = Path(args.file).read_text(encoding="utf-8")
+        print(Summarizer(settings).summarize(text))
+        return
+
+    from .pipeline import Pipeline
+    from .transcriber import Transcriber
     pipeline = Pipeline(settings, S3Store(settings), Transcriber(settings))
     print(pipeline.process_room(args.roomhash, force=args.force))
 

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     s3_use_ssl: bool = False
     recordings_prefix: str = "recordings"
     transcriptions_prefix: str = "transcriptions"
+    recording_extensions: str = "wav,opus,ogg,m4a,mp3,flac"
 
     redis_url: str = "redis://redis:6379/0"
     redis_password: str = ""
@@ -46,6 +47,19 @@ class Settings(BaseSettings):
     max_audio_mb: int = 1000
     requeue_delay_seconds: int = 120
     celery_max_retries: int = 20
+
+    llm_enabled: bool = True
+    llm_base_url: str = "http://ollama:11434/v1"
+    llm_model: str = "qwen2.5:14b-instruct-q4_K_M"
+    llm_timeout: int = 600
+    llm_max_tokens: int = 1500
+    llm_system_prompt: str = (
+        "Riassumi in italiano la trascrizione di una conversazione tra due o più "
+        "persone. Scrivi un riassunto conciso e fedele in un unico paragrafo: i "
+        "punti principali discussi, le informazioni rilevanti emerse ed "
+        "eventuali decisioni o passi successivi. Attieniti ai fatti del testo: "
+        "non aggiungere né inventare informazioni non presenti."
+    )
 
     def _redis_url_with_auth(self) -> str:
         if not self.redis_password:

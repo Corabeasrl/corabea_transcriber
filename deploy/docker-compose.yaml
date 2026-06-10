@@ -27,3 +27,18 @@ services:
 
     healthcheck:
       disable: true
+
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    networks:
+      - corabea_internal
+    volumes:
+      - ollama_models:/root/.ollama
+
+volumes:
+  ollama_models:
