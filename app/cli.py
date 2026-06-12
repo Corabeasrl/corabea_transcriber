@@ -59,8 +59,7 @@ def main() -> None:
         from .celery_app import celery_app, TRANSCRIPTION_QUEUE
         with celery_app.connection_or_acquire() as conn:
             try:
-                depth = conn.default_channel.queue_declare(
-                    queue=TRANSCRIPTION_QUEUE, passive=True).message_count
+                depth = conn.default_channel._size(TRANSCRIPTION_QUEUE)
             except Exception:
                 depth = -1
         
