@@ -6,6 +6,7 @@ Production runs as a Celery worker (see app/celery_app.py).
     python -m app.cli list             # list roomhash folders with recordings
     python -m app.cli run <roomhash>   # transcribe one room and write to S3
     python -m app.cli summarize <file> # summarize a local text file (LLM only)
+    python -m app.cli drained          # exit 0 if no transcription work is pending
 """
 import argparse
 import logging
@@ -26,6 +27,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list roomhash folders that have recordings")
     sub.add_parser("scan", help="show rooms with recordings but no transcript (dry run)")
+    sub.add_parser("drained", help="exit 0 if no transcription work is pending (broker queue + workers empty), else 1")
     run = sub.add_parser("run", help="transcribe one room and exit")
     run.add_argument("roomhash")
     run.add_argument("--force", action="store_true",
@@ -52,6 +54,24 @@ def main() -> None:
         for r in todo:
             print(r)
         return
+
+    if args.cmd == "drained":
+        from .celery_app import celery_app, TRANSCRIPTION_QUEUE
+        with celery_app.connection_or_acquire() as conn:
+            try:
+                depth = conn.default_channel.queue_declare(
+                    queue=TRANSCRIPTION_QUEUE, passive=True).message_count
+            except Exception:
+                depth = -1
+        
+        inspector = celery_app.control.inspect(timeout=5)
+        in_workers = 0
+        for probe in (inspector.active, inspector.reserved, inspector.scheduled):
+            for tasks in (probe() or {}).values():
+                in_workers += len(tasks)
+        
+        print(f"queue={depth} workers={in_workers}")
+        raise SystemExit(0 if (depth == 0 and in_workers == 0) else 1)
 
     if args.cmd == "summarize":
         text = Path(args.file).read_text(encoding="utf-8")
