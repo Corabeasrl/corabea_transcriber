@@ -3,7 +3,6 @@
 Does not touch Redis — it calls the shared Pipeline / S3Store directly.
 Production runs as a Celery worker (see app/celery_app.py).
 
-    python -m app.cli list             # list roomhash folders with recordings
     python -m app.cli run <roomhash>   # transcribe one room and write to S3
     python -m app.cli summarize <file> # summarize a local text file (LLM only)
     python -m app.cli drained          # exit 0 if no transcription work is pending
@@ -25,8 +24,6 @@ logging.basicConfig(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Transcriber CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("list", help="list roomhash folders that have recordings")
-    sub.add_parser("scan", help="show rooms with recordings but no transcript (dry run)")
     sub.add_parser("drained", help="exit 0 if no transcription work is pending (broker queue + workers empty), else 1")
     run = sub.add_parser("run", help="transcribe one room and exit")
     run.add_argument("roomhash")
@@ -37,23 +34,6 @@ def main() -> None:
 
     args = parser.parse_args()
     settings = get_settings()
-
-    if args.cmd == "list":
-        store = S3Store(settings)
-        rooms = store.list_rooms()
-        if not rooms:
-            print(f"(no recordings under {settings.recordings_prefix}/)")
-        for r in rooms:
-            print(r)
-        return
-
-    if args.cmd == "scan":
-        store = S3Store(settings)
-        todo = store.rooms_to_transcribe()
-        print(f"{len(todo)} room(s) to transcribe (recordings without a transcript):")
-        for r in todo:
-            print(r)
-        return
 
     if args.cmd == "drained":
         from .celery_app import celery_app, TRANSCRIPTION_QUEUE

@@ -25,10 +25,6 @@ celery_app.conf.update(
             "queue": TRANSCRIPTION_QUEUE,
             "routing_key": TRANSCRIPTION_QUEUE,
         },
-        "transcriber.scan_and_enqueue": {
-            "queue": TRANSCRIPTION_QUEUE,
-            "routing_key": TRANSCRIPTION_QUEUE,
-        },
     },
     task_ignore_result=True,
     result_backend=None,
@@ -80,17 +76,3 @@ def transcribe_room(self, roomhash: str) -> dict:
         "transcript_key": result.transcript_key,
         "num_fragments": result.num_fragments,
     }
-
-
-@celery_app.task(name="transcriber.scan_and_enqueue")
-def scan_and_enqueue() -> dict:
-    """Find rooms with recordings but no transcription yet, and enqueue a
-    transcribe_room task for each. Triggered nightly (by the backend's beat or a
-    cron). S3 is the source of truth — we never derive work from the DB."""
-    store = S3Store(settings)
-    todo = store.rooms_to_transcribe()
-    for roomhash in todo:
-        celery_app.send_task("transcriber.transcribe_room", args=[roomhash],
-                             queue=TRANSCRIPTION_QUEUE)
-    logger.info("scan_and_enqueue: enqueued %d room(s) without transcript", len(todo))
-    return {"enqueued": len(todo), "rooms": todo}

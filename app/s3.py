@@ -67,30 +67,6 @@ class S3Store:
         objs.sort(key=lambda o: o.last_modified)
         return objs
 
-    def _list_room_prefixes(self, base: str) -> list[str]:
-        """List the immediate <roomhash> sub-folders under a base prefix."""
-        prefix = f"{base}/"
-        rooms: list[str] = []
-        paginator = self._client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(
-            Bucket=self._s.s3_bucket_name, Prefix=prefix, Delimiter="/"
-        ):
-            for cp in page.get("CommonPrefixes", []):
-                rooms.append(cp["Prefix"][len(prefix):].rstrip("/"))
-        return rooms
-
-    def list_rooms(self) -> list[str]:
-        """Roomhash folders that have recordings."""
-        return self._list_room_prefixes(self._s.recordings_prefix)
-
-    def list_transcribed_rooms(self) -> list[str]:
-        """Roomhash folders that already have a transcription."""
-        return self._list_room_prefixes(self._s.transcriptions_prefix)
-
-    def rooms_to_transcribe(self) -> list[str]:
-        """Diff: rooms with recordings but no transcription yet."""
-        return sorted(set(self.list_rooms()) - set(self.list_transcribed_rooms()))
-
     @staticmethod
     def manifest_hash(objs: list[S3Object]) -> str:
         """Deterministic id for a set of source fragments."""
